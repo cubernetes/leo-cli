@@ -30,9 +30,9 @@ log () {
 create_env () {
 	rm -rf "${prefix}"/env
 	command -v python3 >/dev/null 2>&1 || { log err "failed to find python3."; exit 2; }
-	python3 -m venv "${prefix}/env" || virtualenv --python "$(command -v python3)" "${prefix}/env"
-	command . "${prefix}"/env/bin/activate || { log err "failed to activate venv."; exit 3; }
-	pip3 install -r "${prefix}"/requirements.txt || { log err "failed to install dependencies."; exit 4; }
+	python3 -m venv "${prefix}/env" || virtualenv --python "$(command -v python3)" "${prefix}/env" || { log err "failed to create venv."; exit 3; }
+	command . "${prefix}"/env/bin/activate || { log err "failed to activate venv."; exit 4; }
+	pip3 install -r "${prefix}"/requirements.txt || { log err "failed to install dependencies."; exit 5; }
 }
 
 # Activate venv -- dot builtin should be called with command builtin: https://unix.stackexchange.com/a/740901/520093
