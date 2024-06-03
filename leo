@@ -1,71 +1,42 @@
-#!/usr/bin/env python3
+#! /bin/sh -
+# POSIX-compliant wrapper script that executes $(basename $0).py
+# Allows you to put symlinks (even differently named ones) to this script in
+# any directory (e.g. /usr/local/bin), but the venv will still be created in
+# the directory of the resolved symlink (the regular file).
 
-import sys
-import os
-import requests
-import re
-from bs4 import BeautifulSoup
+set -eEu # exit on error, inherit that property to functions, unset variables are error
 
-if __name__ == "__main__":
-	if len(sys.argv) < 2:
-		print("leo.py must be run with at least 1 parameter (word to translate)")
-		sys.exit(1)
+# POSIX trap doesn't have the ERR trap
+trap '[ $? = 0 ] || echo "There was an error executing '"'"'$0'"'"'"' EXIT
 
-	url = 'https://dict.leo.org/englisch-deutsch/' + " ".join(sys.argv[1:])
-	r = requests.get(url)
+# Bit overkill, but needed: https://stackoverflow.com/a/33266819/13823467
+rreadlink()(set +eu; target=$1 fname= targetDir= CDPATH=; { \unalias command; \unset -f command; } >/dev/null 2>&1; [ -n "${ZSH_VERSION}" ] && options[POSIX_BUILTINS]=on; while :; do [ -L "$target" ] || [ -e "$target" ] || { command printf '%s\n' "ERROR: '$target' does not exist." >&2; return 1; }; command cd "$(command dirname -- "$target")"; fname=$(command basename -- "$target"); [ "$fname" = '/' ] && fname=''; if [ -L "$fname" ]; then target=$(command ls -l "$fname"); target=${target#* -> }; continue; fi; break; done; targetDir=$(command pwd -P); if [ "$fname" = '.' ]; then command printf '%s\n' "${targetDir%/}"; elif  [ "$fname" = '..' ]; then command printf '%s\n' "$(command dirname -- "${targetDir}")"; else command printf '%s\n' "${targetDir%/}/$fname"; fi)
 
-	soup = BeautifulSoup(r.text, "html.parser")
+realpath="$(rreadlink "$0")"
+prefix="$(dirname -- "${realpath}")"
 
-	def format_dict_line(s):
-		s = re.sub(r"\.([\w\.]+) ", r". (\1) ", s)
-		s = s.replace(" - ", ": ")
+log () {
+	case "$1" in
+		err)  clr="31"    ;;
+		warn) clr="33"    ;;
+		info) clr="34"    ;;
+		*)    clr="41;30" ;;
+	esac
+	printf "\033[${clr}m$0: %s\033[m\n" "$2"
+}
 
-		s = re.sub(r"[\s\xa0]+", " ", s)
+# try python3 -m venv and virtualenv to create venv,
+# then activate and install requirements.txt
+create_env () {
+	rm -rf "${prefix}"/env
+	command -v python3 >/dev/null 2>&1 || { log err "failed to find python3."; exit 2; }
+	python3 -m venv "${prefix}/env" || virtualenv --python "$(command -v python3)" "${prefix}/env"
+	command . "${prefix}"/env/bin/activate || { log err "failed to activate venv."; exit 3; }
+	pip3 install -r "${prefix}"/requirements.txt || { log err "failed to install dependencies."; exit 4; }
+}
 
-		s = re.sub("\u21d4 (\\w+)", r"\1", s)
+# Activate venv -- dot builtin should be called with command builtin: https://unix.stackexchange.com/a/740901/520093
+command . "${prefix}"/env/bin/activate || { log warn "failed to activate venv. Creating it."; create_env; }
 
-		s = s.replace("|", "[", 1)
-		s = s.replace("|", "]", 1)
-		s = s.replace("|", "[", 1)
-		s = s.replace("|", "]", 1)
-		s = re.sub(r"\[ ", "[", s)
-		s = re.sub(r" \]", "]", s)
-		s = s.replace(")[",") [")
-
-		s = s.strip()
-		return s
-
-	def align(table, delim="|"):
-		max_widths = [0] * len(table[0])
-		string_table = ""
-		for row in table:
-			for i, element in enumerate(row):
-				if (width := len(element)) > max_widths[i]:
-					max_widths[i] = width
-		for i, row in enumerate(table):
-			for j, element in enumerate(row):
-				table[i][j] = element.ljust(max_widths[j])
-			string_table += delim.join(table[i]) + "\n"
-		return string_table
-
-	os.system("")
-	for tbody in soup.select("table.tblf1.tblf-fullwidth.tblf-alternate"):
-		heading = tbody.find("h2").text
-		table = tbody.find("tbody")
-		print("\x1b[33m"+"#"*10, heading, "#"*10+"\x1b[0m")
-		leo_entry = []
-		for line in table:
-			try:
-				en = line.select("td[lang=en]")[0].text
-				de = line.select("td[lang=de]")[0].text
-				leo_entry.append([format_dict_line(en), format_dict_line(de)])
-			except:
-				continue
-		try:
-			print(align(leo_entry, " | "))
-		except:
-			continue
-
-
-	# print("\x1b[3A")
-	sys.exit(0)
+# Exec script with args
+exec "${prefix}"/$(basename -- "${realpath}").py "$@"
