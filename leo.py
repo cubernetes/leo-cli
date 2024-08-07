@@ -42,9 +42,12 @@ if __name__ == "__main__":
         s = re.sub(r"\[ ", "[", s)
         s = re.sub(r" \]", "]", s)
         s = s.replace(")[",") [")
-        if re.search(r"\SAE ", s) and re.search(r"\SBE ", s):
+        if re.search(r"\SespAE ", s) and re.search(r"\SespBE ?", s):
+            s = re.sub(r"(?<=\S)espAE ", " (espAE) ", s)
+            s = re.sub(r"(?<=\S)espBE( )?", r" (espBE)\1", s)
+        if re.search(r"\SAE ", s) and re.search(r"\SBE ?", s):
             s = re.sub(r"(?<=\S)AE ", " (AE) ", s)
-            s = re.sub(r"(?<=\S)BE ", " (BE) ", s)
+            s = re.sub(r"(?<=\S)BE( )?", r" (BE)\1", s)
         s = re.sub(" (Pron|Adj|Adv).($| )", r" (\1.)\2", s)
 
         s = s.strip()
