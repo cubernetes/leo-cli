@@ -11,18 +11,52 @@ from bs4 import BeautifulSoup, Tag
 if __name__ == "__main__":
     args = []
     force_color = False
+    first_lang='en'
+    second_lang='de'
+    lang_url = 'https://dict.leo.org/englisch-deutsch/'
     for arg in sys.argv:
         if arg == '--color':
             force_color = True
+        elif arg == '--eng-ger' or arg == '--ger-eng':
+            lang_url = 'https://dict.leo.org/englisch-deutsch/'
+            first_lang='en'
+            second_lang='de'
+        elif arg == '--spa-eng' or arg == '--eng-spa':
+            lang_url = 'https://dict.leo.org/spanish-english/'
+            first_lang='es'
+            second_lang='en'
+        elif arg == '--ger-spa' or arg == '--spa-ger':
+            lang_url = 'https://dict.leo.org/alem%C3%A1n-espa%C3%B1ol/'
+            first_lang='es'
+            second_lang='de'
+        elif arg == '--fre-ger' or arg == '--ger-fre':
+            lang_url = 'https://dict.leo.org/franz%C3%B6sisch-deutsch/'
+            first_lang='fr'
+            second_lang='de'
+        elif arg == '--eng-fre' or arg == '--fre-eng':
+            lang_url = 'https://dict.leo.org/anglais-fran%C3%A7ais/'
+            first_lang='en'
+            second_lang='fr'
+        elif arg == '--rus-ger' or arg == '--ger-rus':
+            lang_url = 'https://dict.leo.org/%D0%BD%D0%B5%D0%BC%D0%B5%D1%86%D0%BA%D0%B8%D0%B9-%D1%80%D1%83%D1%81%D1%81%D0%BA%D0%B8%D0%B9/'
+            first_lang='ru'
+            second_lang='de'
+        elif arg == '--rus-eng' or arg == '--eng-rus':
+            lang_url = 'https://dict.leo.org/russian-english/'
+            first_lang='en'
+            second_lang='ru'
         else:
             args.append(arg)
     if len(args) < 2:
-        print(f"Usage: leo [--color] WORD [WORD...]")
-        print(f"Note: WORDs will be concatenated using spaces")
-        print(f"Note: --color forces color output")
+        print(f"Usage: leo [--color] [--<lang>-<lang>] WORD [WORD...]")
+        print(f"         WORDs will be concatenated using spaces")
+        print(f"         --color forces color output")
+        print(f"         <lang> can be one of spa, eng, ger, fre, rus.")
+        print(f"         Only some combinations are allowed.")
         sys.exit(1)
 
-    url = 'https://dict.leo.org/englisch-deutsch/' + " ".join(sys.argv[1:])
+    url = lang_url + ' '.join(args[1:])
+
     r = requests.get(url)
 
     soup = BeautifulSoup(r.text, "html.parser")
@@ -100,8 +134,8 @@ if __name__ == "__main__":
         for line in table:
             try:
                 if isinstance(line, Tag):
-                    en_tag = line.select("td[lang=en]")[0]
-                    de_tag = line.select("td[lang=de]")[0]
+                    en_tag = line.select(f"td[lang={first_lang}]")[0]
+                    de_tag = line.select(f"td[lang={second_lang}]")[0]
                     en_br = en_tag.select_one("br")
                     de_br = de_tag.select_one("br")
                     if en_br is not None:
